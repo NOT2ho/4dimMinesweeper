@@ -106,7 +106,7 @@ nslist tuple (M arr) =
     in let y =length (head (head arr))
     in let x =length (head (head (head arr)))
     in
-       M [[[[ if (a,b,c,d) `elem` tuple then (a,b,c,d) else (-1,-1,-1,-1) | a <- [0..w]] | b <- [0..z]] | c <- [0..y]] | d <- [0..x]]
+       M [[[[ if (a,b,c,d) `elem` tuple then (a,b,c,d) else (-1,-1,-1,-1) | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
 
 
 idxListConstruct :: Map Int -> Map (Int, Int, Int, Int)
@@ -116,7 +116,7 @@ idxListConstruct (M arr) =
     in let y =length (head (head arr))
     in let x =length (head (head (head arr)))
     in
-       M [[[[ (a,b,c,d) | a <- [0..w]] | b <- [0..z]] | c <- [0..y]] | d <- [0..x]]
+       M [[[[ (a,b,c,d) | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
 
 
 hiddenDim4arr :: [(Int, Int, Int, Int)] -> Map Int -> Map String
@@ -126,7 +126,7 @@ hiddenDim4arr tuple (M arr) =
     in let y =length (head (head arr))
     in let x =length (head (head (head arr)))
     in
-       M [[[[ if (a,b,c,d) `elem` tuple then show ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a) else "*" | a <- [0..w]] | b <- [0..z]] | c <- [0..y]] | d <- [0..x]]
+       M [[[[ if (a,b,c,d) `elem` tuple then show ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a) else "*" | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
 
 
 
