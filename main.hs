@@ -41,6 +41,16 @@ split n l
   | otherwise = error "user problem"
 
 
+print4D :: Map String -> IO ()
+print4D (M arrrr) = putStr $ concatMap ((++"\n============W axis============\n\n") . print3D) arrrr
+
+
+print2D:: [[String]] -> String
+print2D arr =concatMap (( ++ "\n") . concatMap (++"|")) arr  ++ "\n"
+
+print3D :: [[[String]]] -> String
+print3D = concatMap ((++ "\n-----------Z axis------------\n\n\n\n") . print2D)
+
 dim4MineSweeper :: IO ()
 dim4MineSweeper = do
     putStr "x: "
@@ -66,7 +76,7 @@ ioint = read <$> getLine
 
 repeatSweeper ::  Map Int-> [(Int, Int, Int, Int)] ->  Int -> Map Int -> IO ()
 repeatSweeper numarr inputlist size arr = do
-    print $ hiddenDim4arr inputlist numarr
+    print4D $ hiddenDim4arr inputlist numarr
     if length inputlist < size - mineCounter arr then print "continue" else print "you lucky"
     putStr "next x: "
     input ::Int <- ioint
@@ -77,7 +87,7 @@ repeatSweeper numarr inputlist size arr = do
     putStr "next w: "
     input3 ::Int <- ioint
     let inputTuple = (input, input1, input2, input3)
-    if isMine inputTuple arr  then error $ "\nyou doomed answer is " ++ show arr
+    if isMine inputTuple arr  then error "\nyou doomed." print4D (fmap show arr)
     else do
         let l = inputTuple : inputlist
         repeatSweeper numarr l size arr
@@ -116,7 +126,7 @@ hiddenDim4arr tuple (M arr) =
     in let y =length (head (head arr))
     in let x =length (head (head (head arr)))
     in
-       M [[[[ if (a,b,c,d) `elem` tuple then show ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a)  else "*" | a <- [0..w]] | b <- [0..z]] | c <- [0..y]] | d <- [0..x]]
+       M [[[[ if (a,b,c,d) `elem` tuple then show ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a) else "*" | a <- [0..w]] | b <- [0..z]] | c <- [0..y]] | d <- [0..x]]
 
 
 
