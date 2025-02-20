@@ -1,12 +1,13 @@
 import Data.Bits
 import Data.Maybe (fromMaybe, fromJust)
 import Debug.Trace
-import Control.Monad (replicateM_, forM_, forever)
+import Control.Monad (replicateM_, forM_, forever, liftM2, liftM3, liftM4)
+import Data.List (permutations)
 
 
 newtype Map c = M [[[[c]]]]
     deriving (Functor, Foldable, Show)
-    
+
 main:: IO ()
 main= dim4MineSweeper
 
@@ -57,14 +58,16 @@ dim4MineSweeper = do
     rand::Int  <- ioint
     let inputlist = []
     let arr =  mapMaker diff rand x y z w
-    repeatSweeper arr inputlist size
+    let numarr = numDim4arr arr
+    print numarr
+    repeatSweeper numarr inputlist size arr
 
 ioint :: IO Int
 ioint = read <$> getLine
 
-repeatSweeper ::  Map Int-> [(Int, Int, Int, Int)] ->  Int -> IO ()
-repeatSweeper arr inputlist size = do
-    print $ hiddenDim4arr inputlist arr
+repeatSweeper ::  Map Int-> [(Int, Int, Int, Int)] ->  Int -> Map Int -> IO ()
+repeatSweeper numarr inputlist size arr = do
+    print $ hiddenDim4arr inputlist numarr
     if length inputlist < size - mineCounter arr then print "continue" else print "you lucky"
     putStr "next x: "
     input ::Int <- ioint
@@ -78,7 +81,7 @@ repeatSweeper arr inputlist size = do
     if isMine inputTuple arr  then error $ "\nyou doomed answer is " ++ show arr
     else do
         let l = inputTuple : inputlist
-        repeatSweeper arr l size
+        repeatSweeper numarr l size arr
 
 
 mineCounter :: Map Int -> Int
@@ -125,17 +128,17 @@ numDim4arr (M arr) =
     in let y =length (head (head arr))
     in let x =length (head (head (head arr)))
     in
-    let xp = map (map (map (0:))) arr
-    in let xm = map (map (map tail)) arr
-    in let yp = map (map (replicate x 0 :) ) arr
-    in let ym = map (map tail) arr
-    in let zp = map ((replicate y $ replicate x 0) :) arr
-    in let zm = map tail arr
-    in let wp = replicate z (replicate y $ replicate x 0) : arr
-    in let wm = tail arr
+    let xp = map (map (map (0:)))
+    in let xm = map (map (map tail))
+    in let yp = map (map (replicate x 0 :) )
+    in let ym = map (map tail)
+    in let zp = map ((replicate y $ replicate x 0) :)
+    in let zm = map tail
+    in let wp = (replicate z (replicate y $ replicate x 0) :)
+    in let wm = tail
+    in let func = [(a <$> b) . c <$> d | a <- [xm, id, xp], b <- [yp, id, ym], c <- [zp, id, zm], d<-[wp,id,wm]]
     in
-        M (foldl1 elemwiseAdd [xp, xm, yp, ym, zp, zm, wp, wm])
-
+      M (foldr (elemwiseAdd . ($ arr)) arr func )
 
 elemwiseAdd :: [[[[Int]]]] ->  [[[[Int]]]] -> [[[[Int]]]]
 elemwiseAdd = zipWith (zipWith (zipWith (zipWith (+))))
