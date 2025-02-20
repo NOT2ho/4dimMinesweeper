@@ -59,7 +59,6 @@ dim4MineSweeper = do
     let inputlist = []
     let arr =  mapMaker diff rand x y z w
     let numarr = numDim4arr arr
-    print numarr
     repeatSweeper numarr inputlist size arr
 
 ioint :: IO Int
