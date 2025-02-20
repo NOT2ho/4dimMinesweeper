@@ -1,4 +1,3 @@
-{-# LANGUAGE ParallelListComp #-}
 import Data.Bits
 import Data.Maybe (fromMaybe, fromJust)
 import Debug.Trace
@@ -7,8 +6,9 @@ import Control.Monad (replicateM_, forM_, forever)
 
 newtype Map c = M [[[[c]]]]
     deriving (Functor, Foldable, Show)
--- main:: IO ()
--- main= dim1mineSweeper
+    
+main:: IO ()
+main= dim4MineSweeper
 
 rowColumnChooser:: IO String
 rowColumnChooser = getLine
@@ -40,26 +40,45 @@ split n l
   | otherwise = error "user problem"
 
 
--- dim1mineSweeper :: IO ()
--- dim1mineSweeper = do
---     n ::Int  <- ioint
---     n1::Int <- ioint
---     let inputlist = []
---     let arr =  dim1arr n n1
---     repeatSweeper arr inputlist
+dim4MineSweeper :: IO ()
+dim4MineSweeper = do
+    putStr "x: "
+    x ::Int  <- ioint
+    putStr "y: "
+    y ::Int  <- ioint
+    putStr "z: "
+    z ::Int  <- ioint
+    putStr "w: "
+    w ::Int  <- ioint
+    putStr "difficulty: "
+    let size = x*y*z*w
+    diff::Float <- fromIntegral <$> ioint
+    putStr "random seed: "
+    rand::Int  <- ioint
+    let inputlist = []
+    let arr =  mapMaker diff rand x y z w
+    repeatSweeper arr inputlist size
 
--- ioint :: IO Int
--- ioint = read <$> getLine
+ioint :: IO Int
+ioint = read <$> getLine
 
--- repeatSweeper :: [Int] -> [Int] -> IO ()
--- repeatSweeper arr inputlist = do
---     print $ hiddenDim1arr (map show arr) inputlist
---     if length inputlist < length arr - mineCounter arr then print "continue" else print "you lucky"
---     input ::Int <- ioint
---     if isMine input arr  then error $ "\nyou doomed answer is " ++ show arr
---     else do
---         let l = input : inputlist
---         repeatSweeper arr l
+repeatSweeper ::  Map Int-> [(Int, Int, Int, Int)] ->  Int -> IO ()
+repeatSweeper arr inputlist size = do
+    print $ hiddenDim4arr inputlist arr
+    if length inputlist < size - mineCounter arr then print "continue" else print "you lucky"
+    putStr "next x: "
+    input ::Int <- ioint
+    putStr "next y: "
+    input1 ::Int <- ioint
+    putStr "next z: "
+    input2 ::Int <- ioint
+    putStr "next w: "
+    input3 ::Int <- ioint
+    let inputTuple = (input, input1, input2, input3)
+    if isMine inputTuple arr  then error $ "\nyou doomed answer is " ++ show arr
+    else do
+        let l = inputTuple : inputlist
+        repeatSweeper arr l size
 
 
 mineCounter :: Map Int -> Int
@@ -68,18 +87,36 @@ mineCounter = sum
 isMine :: (Int, Int, Int, Int) -> Map Int -> Bool
 isMine (x,y,z,w) (M map) = 1 == ((((map !! max 0 w) !! max 0 z) !! max 0 y) !! max 0 z)
 
--- nslist :: [(Int, Int, Int, Int)] -> [[[[String]]]] -> Map Int
--- nslist ((x,y,z,w):ls) list nn =
-    
---                             --  (([if a == b then x else 0 | a <- list | b <- repeat x | c <- repeat y | d <- repeat z | e <- repeat w ]))
+nslist :: [(Int, Int, Int, Int)] -> Map a -> Map (Int, Int, Int, Int)
+nslist tuple (M arr) =
+    let w =length arr
+    in let z = length $ head arr
+    in let y =length (head (head arr))
+    in let x =length (head (head (head arr)))
+    in
+       M [[[[ if (a,b,c,d) `elem` tuple then (a,b,c,d) else (-1,-1,-1,-1) | a <- [0..w]] | b <- [0..z]] | c <- [0..y]] | d <- [0..x]]
 
--------------------todo: i should ride 5516
------------code 가 날아갈까봐 무서워서 커밋함 
 
-hiddenDim1arr :: Map String -> Map Int -> Map String
-hiddenDim1arr a s= M [[[[]]]]
--- hiddenDim1arr arr ns = 
---        [if x /= y then ['*'] else fromMaybe "*" (arr!? (read x::Int)) | x <- map show [0..] | y <- nslist  ns (length arr)]
+idxListConstruct :: Map Int -> Map (Int, Int, Int, Int)
+idxListConstruct (M arr) =
+    let w =length arr
+    in let z = length $ head arr
+    in let y =length (head (head arr))
+    in let x =length (head (head (head arr)))
+    in
+       M [[[[ (a,b,c,d) | a <- [0..w]] | b <- [0..z]] | c <- [0..y]] | d <- [0..x]]
+
+
+hiddenDim4arr :: [(Int, Int, Int, Int)] -> Map Int -> Map String
+hiddenDim4arr tuple (M arr) =
+    let w =length arr
+    in let z = length $ head arr
+    in let y =length (head (head arr))
+    in let x =length (head (head (head arr)))
+    in
+       M [[[[ if (a,b,c,d) `elem` tuple then show ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a)  else "*" | a <- [0..w]] | b <- [0..z]] | c <- [0..y]] | d <- [0..x]]
+
+
 
 numDim4arr :: Map Int -> Map Int
 numDim4arr (M arr) =
