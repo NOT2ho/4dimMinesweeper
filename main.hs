@@ -128,13 +128,13 @@ numDim4arr (M arr) =
     in let x =length (head (head (head arr)))
     in
     let xp = map (map (map (0:)))
-    in let xm = map (map (map tail))
+    in let xm = map (map (map (tail . (++[0]))))
     in let yp = map (map (replicate x 0 :) )
-    in let ym = map (map tail)
+    in let ym = map (map (tail. (++[replicate x 0])))
     in let zp = map ((replicate y $ replicate x 0) :)
-    in let zm = map tail
+    in let zm = map (tail . (++[replicate y $ replicate x 0]))
     in let wp = (replicate z (replicate y $ replicate x 0) :)
-    in let wm = tail
+    in let wm = tail . (++ [replicate z (replicate y $ replicate x 0)])
     in let func = [(a <$> b) . c <$> d | a <- [xm, id, xp], b <- [yp, id, ym], c <- [zp, id, zm], d<-[wp,id,wm]]
     in
       M (foldr (elemwiseAdd . ($ arr)) arr func )
