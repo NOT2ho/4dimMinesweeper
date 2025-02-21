@@ -8,6 +8,16 @@ import Control.Monad (replicateM_, forM_, forever, liftM2, liftM3, liftM4)
 import Data.List (permutations)
 import Distribution.Compat.Prelude (readMaybe)
 import qualified Control.Monad
+import Data.Set
+    ( Set,
+      empty,
+      fromList,
+      toList,
+      insert,
+      singleton,
+      unions,
+      union,
+      elemAt )
 
 
 newtype Map c = M [[[[c]]]]
@@ -45,16 +55,44 @@ split n l
   | n > 0 = take n l : split n (drop n l)
   | otherwise = error "user problem"
 
+print4DIO :: Map String -> IO ()
+print4DIO (M arrrr) = do
+    let w =length arrrr
+    putStr $ print4D (M arrrr) 0
 
-print4D :: Map String -> IO ()
-print4D (M arrrr) = putStr $ concatMap ((++"\n============W axis============\n\n") . print3D) arrrr
+print4D :: Map String -> Int -> String
+print4D (M (ar:rrr)) n =
+     let w =length (ar:rrr)
+    in let z = length $ head (ar:rrr)
+    in
+        if n==w 
+            then 
+                ((++"\n============W axis(" ++ show n ++ ")============\n\n\n\n"++ "- - -X axis- - > \n" ) . print3D 0 (z-1)) ar
+                
+           else
+                ((++"\n============W axis(" ++ show n ++ ")============\n\n\n\n"++ "- - -X axis- - > \n" ) . print3D 0 (z-1) ) ar
+                ++ print4D (M rrr) (n+1)
+print4D (M (arrrr)) n = 
+    show arrrr
+                
 
 
-print2D:: [[String]] -> String
-print2D arr =concatMap (( ++ "\n") . concatMap (++"|")) arr  ++ "\n"
 
-print3D :: [[[String]]] -> String
-print3D = concatMap ((++ "\n-----------Z axis------------\n\n\n\n") . print2D)
+print2D:: [[String]]-> String
+print2D arr =concatMap (( ++ "\n") . concatMap (++"|")) arr  ++ "                  ↓ Y axis\n"
+
+print3D :: Int ->  Int ->  [[[String]]] -> String
+print3D n n2 (s:ss)
+    | n == n2 = ((++ "\n-----------Z axis ("
+        ++ show n
+        ++ ")------------"
+        ++ "\n"
+        ++ "- - -X axis- - > \n\n\n\n" ) . print2D) s
+    | n < n2 =  ((++ "\n-----------Z axis ("
+        ++ show n
+        ++ ")------------"
+        ++ "\n"
+        ++ "- - -X axis- - > \n\n\n\n" ) . print2D) s ++ print3D (n+1) n2 ss
 
 dim4MineSweeper :: IO ()
 dim4MineSweeper = do
@@ -72,7 +110,7 @@ dim4MineSweeper = do
     diff::Float <- fromIntegral <$> inputDimSize
     putStr "random seed: "
     rand::Int  <- inputDimSize
-    let inputlist = []
+    let inputlist = empty
     let arr =  mapMaker diff rand x y z w
     let numarr = numDim4arr arr
     repeatSweeper numarr inputlist inputlist x y z w arr
@@ -96,9 +134,9 @@ inputNum n = do
 ioint :: IO Int
 ioint = read <$> getLine
 
-repeatSweeper ::  Map Int-> [(Int, Int, Int, Int)] -> [(Int, Int, Int, Int)] -> Int -> Int -> Int -> Int -> Map Int -> IO ()
+repeatSweeper ::  Map Int-> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Int -> Int -> Int -> Int -> Map Int -> IO ()
 repeatSweeper numarr inputlist totallist x y z w arr = do
-    print4D $ hiddenDim4arr inputlist numarr
+    print4DIO $ hiddenDim4arr inputlist numarr
     if length inputlist < (x*y*z*w) - mineCounter arr then print "continue" else print "you lucky"
     Control.Monad.when (length inputlist == (x*y*z*w) - mineCounter arr) $ print "you win"
     putStr "next x: "
@@ -110,12 +148,11 @@ repeatSweeper numarr inputlist totallist x y z w arr = do
     putStr "next w: "
     input3 ::Int <- inputNum w
     let inputTuple = (input, input1, input2, input3)
-    if isMine inputTuple arr  then print4D (fmap show arr) >> putStr "\nyou doomed this is answer\n"
+    if isMine inputTuple arr  then print4DIO (fmap show arr) >> putStr "\nyou doomed this is answer\n"
     else do
-        let l = inputTuple : inputlist
-        let totalll = inputTuple : totallist
-        let totall = concat (extender totalll numarr)
-        print totall
+        let l = inputTuple `insert` inputlist
+        let totalll = inputTuple `insert` totallist
+        let totall = unions (extender totalll numarr)
         repeatSweeper numarr l totall x y z w arr
 
 
@@ -145,7 +182,7 @@ idxListConstruct (M arr) =
        M [[[[ (a,b,c,d) | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
 
 
-hiddenDim4arr :: [(Int, Int, Int, Int)] -> Map Int -> Map String
+hiddenDim4arr :: Set (Int, Int, Int, Int) -> Map Int -> Map String
 hiddenDim4arr tuple (M arr) =
     let w =length arr
     in let z = length $ head arr
@@ -154,30 +191,43 @@ hiddenDim4arr tuple (M arr) =
     in
        M [[[[ if (a,b,c,d) `elem` tuple then show ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a) else "*" | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
 
-extender :: [(Int, Int, Int, Int)] -> Map Int -> [[(Int, Int, Int, Int)]]
-extender [] arr = []
-extender [(x,y,z,w)] (M arr) =
-    let w' =length arr
-    in let z' = length $ head arr
-    in let y' =length (head (head arr))
-    in let x'' =length (head (head (head arr)))
-    in
-                [if not (x+a <0 ||  y+b <0 || z+c <0 || w+d<0 || x+a >x'' ||  y+b >y' || z+c>z' || w+d>w' ) && x'
-        then (x+a,y+b,z+c,w+d): concat (extender [(x+a, y+b, z+c, w+d)] (M arr))
-        else [(-1,-1,-1,-1)]
-                | x' <- map (0==) (concat (concat (concatMap ((((take 3 . drop (w-1)) . take 3 . drop (z-1)) . take 3 . drop (y-1)) . take 3 . drop (x-1)) arr)))
-                | a <- [-1,0,1] | b <- [-1,0,1] | c <- [-1,0,1] | d <- [-1,0,1] ]
-extender ((x,y,z,w):ts) (M arr) =
-    let w' =length arr
-    in let z' = length $ head arr
-    in let y' =length (head (head arr))
-    in let x'' =length (head (head (head arr)))
-    in
-    [if not (x+a <0 ||  y+b <0 || z+c <0 || w+d<0 || x+a >x'' ||  y+b >y' || z+c>z' || w+d>w' ) && x'
-        then (x+a,y+b,z+c,w+d): concat (extender [(x+a, y+b, z+c, w+d)] (M arr))
-        else [(-1,-1,-1,-1)]
-                | x' <- map (0==) (concat (concat (concatMap ((((take 3 . drop (w-1)) . take 3 . drop (z-1)) . take 3 . drop (y-1)) . take 3 . drop (x-1)) arr)))
-                | a <- [-1,0,1] | b <- [-1,0,1] | c <- [-1,0,1] | d <- [-1,0,1] ] ++ extender ts (M arr)
+
+extender :: Set (Int, Int, Int, Int) -> Map Int -> Set (Set (Int, Int, Int, Int))
+extender a (M arr) =
+    case toList a of
+        [] -> empty
+        [(x,y,z,w)] ->
+            let w' =length arr
+            in let z' = length $ head arr
+            in let y' =length (head (head arr))
+            in let x'' =length (head (head (head arr)))
+            in
+                           show (  [(x', a,b,c,d,x,y,z,w)
+                       | x' <- map (0==) (concat (concat (concatMap ((((take 3 . drop (w-1)) . take 3 . drop (z-1)) . take 3 . drop (y-1)) . take 3 . drop (x-1)) arr)))
+                       | a <- [-1,0,1] | b <- [-1,0,1] | c <- [-1,0,1] | d <- [-1,0,1] ]
+                       )
+                       `trace`
+                       fromList  [if not (x+a <0 ||  y+b <0 || z+c <0 || w+d<0 || x+a >x'' ||  y+b >y' || z+c>z' || w+d>w' ) && x'
+                            then (x+a,y+b,z+c,w+d) `insert` unions (extender (singleton (x+a, y+b, z+c, w+d)) (M arr))
+                            else empty
+                        | x' <- map (0==) (concat (concat (concatMap ((((take 3 . drop (w-1)) . take 3 . drop (z-1)) . take 3 . drop (y-1)) . take 3 . drop (x-1)) arr)))
+                        | a <- [-1,0,1] | b <- [-1,0,1] | c <- [-1,0,1] | d <- [-1,0,1] ]
+        ((x,y,z,w):ls) ->  show (  [(x', a,b,c,d,x,y,z,w)
+                       | x' <- map (0==) (concat (concat (concatMap ((((take 3 . drop (w-1)) . take 3 . drop (z-1)) . take 3 . drop (y-1)) . take 3 . drop (x-1)) arr)))
+                       | a <- [-1,0,1] | b <- [-1,0,1] | c <- [-1,0,1] | d <- [-1,0,1] ]
+                       )
+                       `trace`
+            let w' =length arr
+            in let z' = length $ head arr
+            in let y' =length (head (head arr))
+            in let x'' =length (head (head (head arr)))
+            in
+                extender (fromList ls) (M arr) `union` fromList  [if not (x+a <0 ||  y+b <0 || z+c <0 || w+d<0 || x+a >x'' ||  y+b >y' || z+c>z' || w+d>w' ) && x'
+                           then (x+a,y+b,z+c,w+d) `insert` unions (extender (singleton (x+a, y+b, z+c, w+d)) (M arr))
+                           else empty
+                       | x' <- map (0==) (concat (concat (concatMap ((((take 3 . drop (w-1)) . take 3 . drop (z-1)) . take 3 . drop (y-1)) . take 3 . drop (x-1)) arr)))
+                       | a <- [-1,0,1] | b <- [-1,0,1] | c <- [-1,0,1] | d <- [-1,0,1] ]
+
 
 numDim4arr :: Map Int -> Map Int
 numDim4arr (M arr) =
