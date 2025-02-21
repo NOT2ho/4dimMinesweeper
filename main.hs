@@ -17,14 +17,16 @@ import Data.Set
       singleton,
       unions,
       union,
-      elemAt )
+      elemAt,
+      notMember,
+      null )
 
 
 newtype Map c = M [[[[c]]]]
     deriving (Functor, Foldable, Show)
 
 main:: IO ()
-main= --print [(x,a,b,c,d) | x <- [1..81]| a <- [-1,0,1] , b <- [-1,0,1] , c <- [-1,0,1] | d <- [-1,0,1] ]
+main= 
     dim4MineSweeper
 
 rowColumnChooser:: IO String
@@ -139,7 +141,7 @@ ioint = read <$> getLine
 repeatSweeper ::  Map Int-> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Int -> Int -> Int -> Int -> Map Int -> IO ()
 repeatSweeper numarr inputlist totallist x y z w arr = do
     print4DIO $ hiddenDim4arr totallist numarr
-    if length inputlist < (x*y*z*w) - mineCounter arr then print "continue" else print "you lucky"
+    if length totallist < (x*y*z*w) - mineCounter arr then print "continue" else print "you lucky"
     Control.Monad.when (length inputlist == (x*y*z*w) - mineCounter arr) $ print "you win"
     putStr "next x: "
     input ::Int <- inputNum x
@@ -154,9 +156,9 @@ repeatSweeper numarr inputlist totallist x y z w arr = do
     else do
         let l = inputTuple `insert` inputlist
         let totalll = inputTuple `insert` totallist
-        putStrLn $ "totalll: " ++ show totalll
-        let totall = unions (extender totalll numarr)
-        putStrLn $ "extended: " ++ show totall
+        putStrLn $ "cell selected by you: " ++ show totalll
+        let totall = extender totalll empty numarr
+        putStrLn $ "cell extended: " ++ show totall
         repeatSweeper numarr l totall x y z w arr
 
 
@@ -196,36 +198,27 @@ hiddenDim4arr tuple (M arr) =
        M [[[[ if (a,b,c,d) `elem` tuple then show ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a) else "*" | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
 
 
-extender :: Set (Int, Int, Int, Int) -> Map Int -> Set (Set (Int, Int, Int, Int))
-extender a (M arr) =
+extender :: Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Map Int -> Set (Int, Int, Int, Int)
+extender a opened (M arr) =
     case toList a of
-        [] -> empty
-        [(x,y,z,w)] ->
-             let w' =length arr
+        [] -> opened
+        ((x,y,z,w):ls) ->
+            let w' = length arr
                 in let z' = length $ head arr
-                in let y' =length (head (head arr))
-                in let x'' =length (head (head (head arr)))
-                in
-                if (x,y,z,w) == (0,0,0,0) || (x,y,z,w) == (x'',y',z',w')  then empty else 
-                                fromList  [if not (x+a <0 ||  y+b <0 || z+c <0 || w+d<0 || x+a >x'' ||  y+b >y' || z+c>z' || w+d>w' ) && x'
-                                    then (x+a,y+b,z+c,w+d) `insert` unions (extender (singleton (x+a, y+b, z+c, w+d)) (M arr))
-                                    else empty
-                                | x' <- map (0==) (concat (concat (concatMap ((((take 3 . drop (w-1)) . take 3 . drop (z-1)) . take 3 . drop (y-1)) . take 3 . drop (x-1)) arr)))
-                                | a <- [-1,0,1] , b <- [-1,0,1] , c <- [-1,0,1] , d <- [-1,0,1] ]
-        ((x,y,z,w):ls) ->  
-            let w' =length arr
-            in let z' = length $ head arr
-            in let y' =length (head (head arr))
-            in let x'' =length (head (head (head arr)))
-            in
-                if (x,y,z,w) == (0,0,0,0) || (x,y,z,w) == (x'',y',z',w')  then empty else 
-                extender (fromList ls) (M arr) `union` fromList 
-                        [if not (x+a <0 ||  y+b <0 || z+c <0 || w+d<0 || x+a >x'' ||  y+b >y' || z+c>z' || w+d>w' ) && x'
-                           then (x+a,y+b,z+c,w+d) `insert` unions (extender (singleton (x+a, y+b, z+c, w+d)) (M arr))
-                           else empty
-                       | x' <- map (0==) (concat (concat (concatMap ((((take 3 . drop (w-1)) . take 3 . drop (z-1)) . take 3 . drop (y-1)) . take 3 . drop (x-1)) arr)))
-                       |  a <- [-1,0,1] , b <- [-1,0,1] , c <- [-1,0,1] , d <- [-1,0,1] ]
-
+                in let y' = length (head (head arr))
+                in let x' = length (head (head (head arr)))
+                in let opened1 = opened `union` singleton (x, y, z, w)
+                in let next1 = fromList
+                                    (filter (/= (-1,-1,-1,-1))
+                                        [(if not (x+a <0 || y+b <0 || z+c <0 || w+d<0 || x+a >=x' || y+b >=y' || z+c>=z' || w+d>=w')
+                                            && notMember (x+a, y+b, z+c, w+d) opened1
+                                            then (a+x, y+b, z+c, w+d)
+                                            else (-1,-1,-1,-1))
+                                        | a <- [-1,0,1] , b <- [-1,0,1] , c <- [-1,0,1] , d <- [-1,0,1] ]
+                                    )
+                in let opened2 = opened1 `union` next1
+                in let next2 = fromList (filter (\(a,b,c,d) -> arr !! max 0 d !! max 0 c !! max 0 b !! max 0 a == 0) (toList next1))
+                in extender (fromList ls `union` next2) opened2 (M arr)
 
 numDim4arr :: Map Int -> Map Int
 numDim4arr (M arr) =
