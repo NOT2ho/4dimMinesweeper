@@ -65,16 +65,15 @@ print4D (M (ar:rrr)) n =
      let w =length (ar:rrr)
     in let z = length $ head (ar:rrr)
     in
-        if n==w 
-            then 
-                ((++"\n============W axis(" ++ show n ++ ")============\n\n\n\n"++ "- - -X axis- - > \n" ) . print3D 0 (z-1)) ar
-                
+        if n==w
+            then
+               "\n============W axis(" ++ show n ++ ")============\n\n\n\n"++ "- - -X axis- - > \n" ++  print3D 0 (z-1) ar
            else
-                ((++"\n============W axis(" ++ show n ++ ")============\n\n\n\n"++ "- - -X axis- - > \n" ) . print3D 0 (z-1) ) ar
+                "\n============W axis(" ++ show n ++ ")============\n\n\n\n"++ "- - -X axis- - > \n"  ++ (print3D 0 (z-1) ) ar
                 ++ print4D (M rrr) (n+1)
-print4D (M (arrrr)) n = 
-    show arrrr
-                
+print4D (M arrrr) n =
+    ""
+
 
 
 
