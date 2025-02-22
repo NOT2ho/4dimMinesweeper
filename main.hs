@@ -156,7 +156,7 @@ ioint = read <$> getLine
 repeatSweeper ::  Map Int-> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Int -> Int -> Int -> Int -> Map Int -> IO ()
 repeatSweeper numarr inputlist totallist flagged minelist x y z w arr = do
     print4DIO $ hiddenDim4arr totallist flagged numarr
-    if (idxListConstruct1d arr `difference` minelist ) == totallist then putStr "\nyou win.. \n" >> putStr "thanks for the playing. regame to restart the exe.\n enter to quit."
+    if (idxListConstruct1d arr `difference` minelist ) `union` flagged == totallist then putStr "\nyou win.. \n" >> putStr "thanks for the playing. regame to restart the exe.\n enter to quit."
     else do
         flaggedd <- flagger x y z w flagged
         putStrLn $ "map size : " ++ show x ++ " * "++  show y ++ " * "++ show z++ " * "++ show  w
