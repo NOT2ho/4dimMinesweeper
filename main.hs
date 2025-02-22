@@ -19,14 +19,16 @@ import Data.Set
       union,
       elemAt,
       notMember,
-      null )
+      null, isSubsetOf )
+import System.Process
+import System.IO
 
 
 newtype Map c = M [[[[c]]]]
     deriving (Functor, Foldable, Show)
 
 main:: IO ()
-main= 
+main=
     dim4MineSweeper
 
 rowColumnChooser:: IO String
@@ -50,7 +52,7 @@ zeroMaker x y z w = replicate w (replicate z (replicate y ( replicate x 0 )))
 mapMaker :: Float -> Int -> Int -> Int -> Int -> Int -> Map Int
 mapMaker diff seed x y z w =
     let list = map ((\a -> if round a `rem` round diff == 0 then 1 else 0) . (* 10000000)) $ xorshift32inf seed in
-    M $ split x $ split y (split z (take (x*y*z*w) list))
+    M $ split z $ split y (split x (take (x*y*z*w) list))
 
 split :: Int -> [a] -> [[a]]
 split _ [] = []
@@ -72,9 +74,9 @@ print4D (M (ar:rrr)) n =
     in
         if n==w
             then
-               "\n============W axis(" ++ show n ++ ")============\n\n\n\n"++ "- - -X axis- - > \n" ++  print3D 0 (z-1) ar
+               "\n============W axis(" ++ show n ++ ")============\n\n\n\n"++  print3D 0 (z-1) ar
            else
-                "\n============W axis(" ++ show n ++ ")============\n\n\n\n"++ "- - -X axis- - > \n"  ++ print3D 0 (z-1) ar
+                "\n============W axis(" ++ show n ++ ")============\n\n\n\n" ++ print3D 0 (z-1) ar
                 ++ print4D (M rrr) (n+1)
 print4D (M arrrr) n =
     ""
@@ -100,7 +102,17 @@ print3D n n2 (s:ss)
 
 dim4MineSweeper :: IO ()
 dim4MineSweeper = do
+    system "chcp 65001"
+    hSetEncoding stdout utf8
+    hSetBuffering stdin NoBuffering
+    hSetBuffering stdout NoBuffering
     putStrLn "welcome to the 4 dim minesweeper."
+    putStrLn "i don`t know this works well cuz i can`t test this"
+    putStrLn "\n\n============  legend  ============"
+    putStrLn "| symbol |         meaning       |"
+    putStrLn "|    *   |          mine         |"
+    putStrLn "|    !   |          flag         |"
+    putStrLn "|    n   |  num of 80-side mine  |\n\n"
     putStr "x size: "
     x ::Int  <- inputDimSize
     putStr "y size: "
@@ -117,53 +129,89 @@ dim4MineSweeper = do
     let inputlist = empty
     let arr =  mapMaker diff rand x y z w
     let numarr = numDim4arr arr
-    repeatSweeper numarr inputlist inputlist x y z w arr
-
+    let minelist = mineList arr
+    let flagged = empty
+    putStrLn $ "mines exist: " ++ show (mineCounter arr)
+    repeatSweeper numarr inputlist inputlist flagged minelist  x y z w arr
+    line <- getLine
+    pure ()
 
 inputDimSize :: IO Int
 inputDimSize = do
     str <- getLine
     case readMaybe str ::Maybe Int of
-        Just i -> if i < 2 then putStrLn "\ntoo small\n" >> inputDimSize else return i
-        nothing -> putStrLn "\nint.\n" >> inputDimSize
+        Just i -> if i < 2 then putStrLn "too small" >> inputDimSize else return i
+        nothing -> putStrLn "int." >> inputDimSize
 
 inputNum :: Int -> IO Int
 inputNum n = do
     str <- getLine
     case readMaybe str ::Maybe Int of
-        Just i -> if i < 0 || i > n-1 then putStrLn "\nout of index try again\n" >> inputNum n else return i
-        nothing -> putStrLn "\nyou did wrong input. do again\n" >> inputNum n
+        Just i -> if i < 0 || i > n-1 then putStrLn "out of index try again" >> inputNum n else return i
+        nothing -> putStrLn "int." >> inputNum n
 
 
 ioint :: IO Int
 ioint = read <$> getLine
 
-repeatSweeper ::  Map Int-> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Int -> Int -> Int -> Int -> Map Int -> IO ()
-repeatSweeper numarr inputlist totallist x y z w arr = do
-    print4DIO $ hiddenDim4arr totallist numarr
-    if length totallist < (x*y*z*w) - mineCounter arr then print "continue" else print "you lucky"
-    Control.Monad.when (length inputlist == (x*y*z*w) - mineCounter arr) $ print "you win"
-    putStr "next x: "
-    input ::Int <- inputNum x
-    putStr "next y: "
-    input1 ::Int <- inputNum y
-    putStr "next z: "
-    input2 ::Int <- inputNum z
-    putStr "next w: "
-    input3 ::Int <- inputNum w
-    let inputTuple = (input, input1, input2, input3)
-    if isMine inputTuple arr  then print4DIO (fmap show arr) >> putStr "\nyou doomed this is answer\n"
+repeatSweeper ::  Map Int-> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Int -> Int -> Int -> Int -> Map Int -> IO ()
+repeatSweeper numarr inputlist totallist flagged minelist x y z w arr = do
+    print4DIO $ hiddenDim4arr totallist flagged numarr
+    if minelist `isSubsetOf` totallist then putStr "\nyou win.. \n" >> putStr "thanks for the playing. regame to restart the exe.\n enter to quit."
     else do
-        let l = inputTuple `insert` inputlist
-        let totalll = inputTuple `insert` totallist
-        putStrLn $ "cell selected by you: " ++ show totalll
-        let totall = extender totalll empty numarr
-        putStrLn $ "cell extended: " ++ show totall
-        repeatSweeper numarr l totall x y z w arr
+        flaggedd <- flagger x y z w flagged
+        putStrLn $ "map size : " ++ show x ++ " * "++  show y ++ " * "++ show z++ " * "++ show  w
+        putStr "next x: "
+        input ::Int <- inputNum x
+        putStr "next y: "
+        input1 ::Int <- inputNum y
+        putStr "next z: "
+        input2 ::Int <- inputNum z
+        putStr "next w: "
+        input3 ::Int <- inputNum w
+        let inputTuple = (input, input1, input2, input3)
+        if isMine inputTuple arr  then print4DIO (fmap show arr) >> putStr "\nyou doomed this is answer \n" >> putStr "game over. regame to restart the exe.\n enter to quit."
+        else do
+            let l = inputTuple `insert` inputlist
+            let totalll = inputTuple `insert` totallist
+            putStrLn $ "mines exist: " ++ show (mineCounter arr)
+            putStrLn $ "cell selected by you: " ++ show totalll
+            let totall = extender totalll empty numarr
+            putStrLn $ "cell extended: " ++ show totall
+            putStrLn $ "cell you flagged: " ++ show flaggedd
+            repeatSweeper numarr l totall flaggedd minelist x y z w arr
+
+flagger :: Int -> Int -> Int -> Int -> Set (Int, Int, Int, Int) -> IO (Set (Int, Int, Int, Int))
+flagger x y' z w s = do
+    putStrLn "do you want to flag? (y / n)"
+    flagging <- getLine
+    if flagging == "y" then do
+                putStrLn $ "map size : " ++ show x ++ " * "++  show y' ++ " * "++ show z++ " * "++ show  w
+                putStr "flag x: "
+                input ::Int <- inputNum x
+                putStr "flag y: "
+                input1 ::Int <- inputNum y'
+                putStr "flag z: "
+                input2 ::Int <- inputNum z
+                putStr "flag w: "
+                input3 ::Int <- inputNum w
+                flagger x y' z w ((input, input1, input2, input3) `insert` s)
+                    else if flagging == "n" then
+                return s
+    else print "(y/n)" >> flagger x y' z w s
 
 
 mineCounter :: Map Int -> Int
 mineCounter = sum
+
+mineList :: Map Int -> Set (Int, Int, Int, Int)
+mineList (M arr) = let w =length arr
+    in let z = length $ head arr
+    in let y =length (head (head arr))
+    in let x =length (head (head (head arr)))
+    in fromList $ filter (/= (-1,-1,-1,-1)) [ if 1 ==((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a) then (a,b,c,d) else (-1,-1,-1,-1) | a <- [0..x-1], b <- [0..y-1], c <- [0..z-1], d <- [0..w-1]]
+
+
 
 isMine :: (Int, Int, Int, Int) -> Map Int -> Bool
 isMine (x,y,z,w) (M map) = 1 == ((((map !! max 0 w) !! max 0 z) !! max 0 y) !! max 0 z)
@@ -175,7 +223,14 @@ nslist tuple (M arr) =
     in let y =length (head (head arr))
     in let x =length (head (head (head arr)))
     in
-       M [[[[ if (a,b,c,d) `elem` tuple then (a,b,c,d) else (-1,-1,-1,-1) | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
+       M [[[[ if (a,b,c,d) `elem` tuple then (a,b,c,d) else (-1,-1,-1,-1) | a <- [0..x-1] ]|  b <- [0..y-1] ]| c <- [0..z-1]] | d <- [0..w-1]]
+
+digitto2:: Int -> String
+digitto2 n 
+    | n < 0 = "error"
+    | n >= 0 && n < 10 = " " ++ show n
+    | n >= 10 && n < 100 = show n
+    | n > 100 = "error"
 
 
 idxListConstruct :: Map Int -> Map (Int, Int, Int, Int)
@@ -185,17 +240,23 @@ idxListConstruct (M arr) =
     in let y =length (head (head arr))
     in let x =length (head (head (head arr)))
     in
-       M [[[[ (a,b,c,d) | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
+       M [[[[ (a,b,c,d) |a <- [0..x-1] ]|  b <- [0..y-1] ]| c <- [0..z-1]] | d <- [0..w-1]]
 
 
-hiddenDim4arr :: Set (Int, Int, Int, Int) -> Map Int -> Map String
-hiddenDim4arr tuple (M arr) =
+hiddenDim4arr :: Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Map Int -> Map String
+hiddenDim4arr tuple flagged (M arr) =
     let w =length arr
     in let z = length $ head arr
     in let y =length (head (head arr))
     in let x =length (head (head (head arr)))
     in
-       M [[[[ if (a,b,c,d) `elem` tuple then show ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a) else "*" | a <- [0..w-1]] | b <- [0..z-1]] | c <- [0..y-1]] | d <- [0..x-1]]
+            M [[[[ if (a,b,c,d) `elem` flagged
+                        then " !"
+                        else
+                            if (a,b,c,d) `elem` tuple
+                            then  digitto2 ((((arr !! max 0 d) !! max 0 c) !! max 0 b) !! max 0 a)
+                            else    " *"
+                    | a <- [0..x-1] ]|  b <- [0..y-1] ]| c <- [0..z-1]] | d <- [0..w-1]]
 
 
 extender :: Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Map Int -> Set (Int, Int, Int, Int)
