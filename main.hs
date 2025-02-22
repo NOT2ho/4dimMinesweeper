@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use map once" #-}
-{-# LANGUAGE ParallelListComp #-}
 import Data.Bits
 import Data.Maybe (fromMaybe, fromJust)
 import Debug.Trace
@@ -19,7 +18,7 @@ import Data.Set
       union,
       elemAt,
       notMember,
-      null, isSubsetOf )
+      null, isSubsetOf, difference )
 import System.Process
 import System.IO
 
@@ -121,7 +120,7 @@ dim4MineSweeper = do
     z ::Int  <- inputDimSize
     putStr "w size: "
     w ::Int  <- inputDimSize
-    putStr "difficulty(inverse): "
+    putStr "difficulty(inverse, 3-15 recommanded.): "
     let size = x*y*z*w
     diff::Float <- fromIntegral <$> inputDimSize
     putStr "random seed: "
@@ -132,6 +131,7 @@ dim4MineSweeper = do
     let minelist = mineList arr
     let flagged = empty
     putStrLn $ "mines exist: " ++ show (mineCounter arr)
+    print minelist
     repeatSweeper numarr inputlist inputlist flagged minelist  x y z w arr
     line <- getLine
     pure ()
@@ -157,7 +157,7 @@ ioint = read <$> getLine
 repeatSweeper ::  Map Int-> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Int -> Int -> Int -> Int -> Map Int -> IO ()
 repeatSweeper numarr inputlist totallist flagged minelist x y z w arr = do
     print4DIO $ hiddenDim4arr totallist flagged numarr
-    if minelist `isSubsetOf` totallist then putStr "\nyou win.. \n" >> putStr "thanks for the playing. regame to restart the exe.\n enter to quit."
+    if (idxListConstruct1d arr `difference` minelist ) == totallist then putStr "\nyou win.. \n" >> putStr "thanks for the playing. regame to restart the exe.\n enter to quit."
     else do
         flaggedd <- flagger x y z w flagged
         putStrLn $ "map size : " ++ show x ++ " * "++  show y ++ " * "++ show z++ " * "++ show  w
@@ -173,10 +173,10 @@ repeatSweeper numarr inputlist totallist flagged minelist x y z w arr = do
         if isMine inputTuple arr  then print4DIO (fmap show arr) >> putStr "\nyou doomed this is answer \n" >> putStr "game over. regame to restart the exe.\n enter to quit."
         else do
             let l = inputTuple `insert` inputlist
-            let totalll = inputTuple `insert` totallist
+            let extendedthis = extender l empty minelist numarr
             putStrLn $ "mines exist: " ++ show (mineCounter arr)
-            putStrLn $ "cell selected by you: " ++ show totalll
-            let totall = extender totalll empty numarr
+            putStrLn $ "cell selected by you: " ++ show l
+            let totall = totallist `union` extendedthis
             putStrLn $ "cell extended: " ++ show totall
             putStrLn $ "cell you flagged: " ++ show flaggedd
             repeatSweeper numarr l totall flaggedd minelist x y z w arr
@@ -214,7 +214,7 @@ mineList (M arr) = let w =length arr
 
 
 isMine :: (Int, Int, Int, Int) -> Map Int -> Bool
-isMine (x,y,z,w) (M map) = 1 == ((((map !! max 0 w) !! max 0 z) !! max 0 y) !! max 0 z)
+isMine (x,y,z,w) (M map) = 1 == ((((map !! max 0 w) !! max 0 z) !! max 0 y) !! max 0 x)
 
 nslist :: [(Int, Int, Int, Int)] -> Map a -> Map (Int, Int, Int, Int)
 nslist tuple (M arr) =
@@ -225,12 +225,15 @@ nslist tuple (M arr) =
     in
        M [[[[ if (a,b,c,d) `elem` tuple then (a,b,c,d) else (-1,-1,-1,-1) | a <- [0..x-1] ]|  b <- [0..y-1] ]| c <- [0..z-1]] | d <- [0..w-1]]
 
+
+
+
 digitto2:: Int -> String
-digitto2 n 
+digitto2 n
     | n < 0 = "error"
     | n >= 0 && n < 10 = " " ++ show n
     | n >= 10 && n < 100 = show n
-    | n > 100 = "error"
+    | n >= 100 = " #"
 
 
 idxListConstruct :: Map Int -> Map (Int, Int, Int, Int)
@@ -241,6 +244,16 @@ idxListConstruct (M arr) =
     in let x =length (head (head (head arr)))
     in
        M [[[[ (a,b,c,d) |a <- [0..x-1] ]|  b <- [0..y-1] ]| c <- [0..z-1]] | d <- [0..w-1]]
+
+
+idxListConstruct1d :: Map Int -> Set (Int, Int, Int, Int)
+idxListConstruct1d (M arr) =
+    let w =length arr
+    in let z = length $ head arr
+    in let y =length (head (head arr))
+    in let x =length (head (head (head arr)))
+    in
+       fromList [ (a,b,c,d) |a <- [0..x-1],  b <- [0..y-1], c <- [0..z-1], d <- [0..w-1]]
 
 
 hiddenDim4arr :: Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Map Int -> Map String
@@ -259,8 +272,8 @@ hiddenDim4arr tuple flagged (M arr) =
                     | a <- [0..x-1] ]|  b <- [0..y-1] ]| c <- [0..z-1]] | d <- [0..w-1]]
 
 
-extender :: Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Map Int -> Set (Int, Int, Int, Int)
-extender a opened (M arr) =
+extender :: Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) ->  Set (Int, Int, Int, Int) -> Map Int -> Set (Int, Int, Int, Int)
+extender a opened minelist (M arr) =
     case toList a of
         [] -> opened
         ((x,y,z,w):ls) ->
@@ -276,10 +289,10 @@ extender a opened (M arr) =
                                             then (a+x, y+b, z+c, w+d)
                                             else (-1,-1,-1,-1))
                                         | a <- [-1,0,1] , b <- [-1,0,1] , c <- [-1,0,1] , d <- [-1,0,1] ]
-                                    )
-                in let opened2 = opened1 `union` next1
+                                    ) `difference` minelist
+                in let opened2 = (opened1 `union` next1)
                 in let next2 = fromList (filter (\(a,b,c,d) -> arr !! max 0 d !! max 0 c !! max 0 b !! max 0 a == 0) (toList next1))
-                in extender (fromList ls `union` next2) opened2 (M arr)
+                in extender (fromList ls `union` next2) opened2 minelist (M arr)
 
 numDim4arr :: Map Int -> Map Int
 numDim4arr (M arr) =
@@ -290,15 +303,15 @@ numDim4arr (M arr) =
     in
     let xp = map (map (map (0:)))
     in let xm = map (map (map (tail . (++[0]))))
-    in let yp = map (map (replicate x 0 :) )
+    in let yp = map (map (init . (replicate x 0 :)) )
     in let ym = map (map (tail. (++[replicate x 0])))
-    in let zp = map ((replicate y $ replicate x 0) :)
+    in let zp = map (init . ((replicate y $ replicate x 0) :))
     in let zm = map (tail . (++[replicate y $ replicate x 0]))
-    in let wp = (replicate z (replicate y $ replicate x 0) :)
+    in let wp = (init . (replicate z (replicate y $ replicate x 0) :))
     in let wm = tail . (++ [replicate z (replicate y $ replicate x 0)])
     in let func = [(a <$> b) . c <$> d | a <- [xm, id, xp], b <- [yp, id, ym], c <- [zp, id, zm], d<-[wp,id,wm]]
     in
-      M (foldr (elemwiseAdd . ($ arr)) arr func )
+      M (foldr (elemwiseAdd . ($ arr)) arr func)
 
 elemwiseAdd :: [[[[Int]]]] ->  [[[[Int]]]] -> [[[[Int]]]]
 elemwiseAdd = zipWith (zipWith (zipWith (zipWith (+))))
