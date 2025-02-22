@@ -131,7 +131,6 @@ dim4MineSweeper = do
     let minelist = mineList arr
     let flagged = empty
     putStrLn $ "mines exist: " ++ show (mineCounter arr)
-    print minelist
     repeatSweeper numarr inputlist inputlist flagged minelist  x y z w arr
     line <- getLine
     pure ()
