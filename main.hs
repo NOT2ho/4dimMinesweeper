@@ -156,7 +156,7 @@ ioint = read <$> getLine
 repeatSweeper ::  Map Int-> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Set (Int, Int, Int, Int) -> Int -> Int -> Int -> Int -> Map Int -> IO ()
 repeatSweeper numarr inputlist totallist flagged minelist x y z w arr = do
     print4DIO $ hiddenDim4arr totallist flagged numarr
-    if (idxListConstruct1d arr `difference` minelist ) `union` flagged == totallist then putStr "\nyou win.. \n" >> putStr "thanks for the playing. regame to restart the exe.\n enter to quit."
+    if (idxListConstruct1d arr `difference` minelist ) `union` flagged == totallist then putStr "\nyou win.. \n" >> putStr "thanks for the playing. restart the exe to regame.\nenter to quit."
     else do
         flaggedd <- flagger x y z w flagged
         putStrLn $ "map size : " ++ show x ++ " * "++  show y ++ " * "++ show z++ " * "++ show  w
@@ -169,7 +169,7 @@ repeatSweeper numarr inputlist totallist flagged minelist x y z w arr = do
         putStr "next w: "
         input3 ::Int <- inputNum w
         let inputTuple = (input, input1, input2, input3)
-        if isMine inputTuple arr  then print4DIO (fmap show arr) >> putStr "\nyou doomed this is answer \n" >> putStr "game over. regame to restart the exe.\n enter to quit."
+        if isMine inputTuple arr  then print4DIO (fmap show arr) >> putStr "\nyou doomed this is answer \n" >> putStr "game over. restart the exe to regame.\nenter to quit."
         else do
             let l = inputTuple `insert` inputlist
             let extendedthis = extender l empty minelist numarr
